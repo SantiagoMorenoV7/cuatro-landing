@@ -13,8 +13,14 @@
     { id: 'La',  label: 'La',   frets: [0, 2, 3, 2], bass: 110.0 },
     { id: 'Mim', label: 'Mi m', frets: [2, 2, 1, 0], bass: 82.41 },
     { id: 'Sim', label: 'Si m', frets: [2, 0, 0, 0], bass: 61.74 },
+    { id: 'Fa#7', label: 'Fa#7', frets: [1, 2, 0, 2], bass: 92.50 },
   ];
   const RETO = ['Re', 'La7', 'Re', 'Sol', 'La7', 'Re'];
+  // progresiones para acompañar: un acorde por compás de 3/4
+  const SONGS = {
+    seis: { name: 'Seis por derecho', bars: ['Re', 'Re', 'Sol', 'Sol', 'La7', 'La7', 'Re', 'Re'], bpm: 160 },
+    pajarillo: { name: 'Pajarillo', bars: ['Sim', 'Sim', 'Mim', 'Mim', 'Fa#7', 'Fa#7', 'Sim', 'Sim'], bpm: 172 },
+  };
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- Audio ----------
@@ -55,19 +61,22 @@
     const bright = opts.bright ?? 0.6, dur = opts.dur ?? 1.8, decay = opts.decay ?? 0.9966;
     const key = `${freq.toFixed(2)}|${bright}|${dur}|${decay}`;
     if (bufCache.has(key)) return bufCache.get(key);
-    const sr = ctx.sampleRate, n = Math.floor(sr * dur), p = Math.max(2, Math.round(sr / freq));
+    const sr = ctx.sampleRate, n = Math.floor(sr * dur), p = Math.max(2, Math.round(sr / freq - 0.5));
     const buf = ctx.createBuffer(1, n, sr), y = buf.getChannelData(0);
     let prev = 0;
     const a = 1 - bright;
     for (let i = 0; i < p && i < n; i++) { const r = Math.random() * 2 - 1; prev = (1 - a) * r + a * prev; y[i] = prev; }
+    let m = 0; for (let i = 0; i < p && i < n; i++) m += y[i]; m /= Math.min(p, n);
+    for (let i = 0; i < p && i < n; i++) y[i] -= m;          // sin componente continua
     for (let i = p; i < n; i++) y[i] = decay * 0.5 * (y[i - p] + y[i - p - 1 >= 0 ? i - p - 1 : 0]);
+    buf.rate = freq * (p + 0.5) / sr;      // el promedio de 2 muestras agrega medio ciclo de retardo: se corrige la afinación
     bufCache.set(key, buf);
     return buf;
   }
 
   function playNote(freq, when, gain, opts) {
     if (!ctx) return;
-    const src = ctx.createBufferSource(); src.buffer = ksBuffer(freq, opts);
+    const src = ctx.createBufferSource(); src.buffer = ksBuffer(freq, opts); src.playbackRate.value = src.buffer.rate;
     const g = ctx.createGain(); g.gain.value = gain;
     if (opts && opts.mute) { g.gain.setValueAtTime(gain, when); g.gain.exponentialRampToValueAtTime(0.001, when + 0.11); }
     src.connect(g); g.connect(dry); src.start(when); src.stop(when + (opts?.dur ?? 1.8));
@@ -89,7 +98,7 @@
     src.connect(bp); bp.connect(g); g.connect(master); src.start(when); src.stop(when + 0.1);
   }
   function bassNote(freq, when, dur) {
-    const src = ctx.createBufferSource(); src.buffer = ksBuffer(freq, { bright: 0.15, dur: dur + 0.2, decay: 0.9985 });
+    const src = ctx.createBufferSource(); src.buffer = ksBuffer(freq, { bright: 0.15, dur: dur + 0.2, decay: 0.9985 }); src.playbackRate.value = src.buffer.rate;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380;
     const g = ctx.createGain(); g.gain.value = 1.4;
     src.connect(lp); lp.connect(g); g.connect(master); src.start(when);
@@ -111,7 +120,7 @@
 
   // En celular el diapasón va vertical (cejuela arriba) y los acordes quedan al lado, como en una app de instrumento.
   const mqVertical = window.matchMedia('(max-width: 719px)');
-  let frame = null, overlay = null;
+  let frame = null, overlay = null, rippleG = null, lastRipple = 0, level = 0;
 
   function layout() {
     const vertical = mqVertical.matches;
@@ -163,6 +172,8 @@
     mk('path', { d: `M${endX - 10} ${boardTop - 18} C ${endX + 120} ${boardTop - 70}, ${W + 80} ${boardTop - 20}, ${W + 80} ${H / 2} C ${W + 80} ${H - boardTop + 20}, ${endX + 120} ${H - boardTop + 70}, ${endX - 10} ${H - boardTop + 18}Z`, fill: '#D9A15A' }, frame);
     mk('circle', { cx: bodyX, cy: midY, r: 72, fill: '#5B3415' }, frame);
     mk('circle', { cx: bodyX, cy: midY, r: 62, fill: 'url(#hole)' }, frame);
+    rippleG = mk('g', { class: 'ripples' }, frame);
+    L.hole = { cx: bodyX, cy: midY };
     // diapasón
     mk('rect', { x: nutX - 26, y: boardTop, width: endX - nutX + 26, height: boardH, rx: 14, fill: 'url(#wood)' }, frame);
     [3, 5, 7].forEach(f => { if (f <= L.nFrets) mk('circle', { cx: (frets[f - 1] + frets[f]) / 2, cy: midY, r: 8, fill: '#F1D9B0', opacity: .45 }, frame); });
@@ -205,19 +216,30 @@
 
   // vibración de cuerdas
   let raf = 0;
+  function ripple(v) {
+    const now = performance.now();
+    if (reduceMotion || !rippleG || now - lastRipple < 110) return;
+    lastRipple = now;
+    const c = mk('circle', { cx: L.hole.cx, cy: L.hole.cy, r: 64, class: 'ripple' }, rippleG);
+    c.style.setProperty('--o', Math.min(0.9, 0.35 + v * 0.5).toFixed(2));
+    c.addEventListener('animationend', () => c.remove());
+    if (rippleG.childNodes.length > 8) rippleG.firstChild.remove();
+  }
   function excite(s, v = 1) {
     const st = strings[s]; if (!st) return;
+    ripple(v);
     st.amp = Math.min(1.3, st.amp * 0.4 + v); st.t0 = performance.now();
     if (!raf) raf = requestAnimationFrame(tick);
   }
   function tick(now) {
-    let alive = false;
+    let alive = false; level = 0;
     for (const st of strings) {
       if (st.amp < 0.01) { st.path.setAttribute('d', `M${L.nutX} ${st.y} L${st.x2} ${st.y}`); st.path.classList.remove('ringing'); continue; }
       alive = true;
       const dt = (now - st.t0) / 1000;
       const a = st.amp * Math.exp(-dt * 3.4);
       if (a < 0.01) { st.amp = 0; continue; }
+      level += a;
       const off = reduceMotion ? 0 : a * (L.vertical ? 11 : 13) * Math.sin(now / 1000 * 2 * Math.PI * 13);
       const mid = (L.nutX + st.x2) / 2;
       st.path.setAttribute('d', `M${L.nutX} ${st.y} Q${mid} ${st.y + off * 2} ${st.x2} ${st.y}`);
@@ -297,8 +319,9 @@
     b.addEventListener('click', () => { setChord(c.id); if (!golpe.on) strum('down', 0.85); });
     chordBox.appendChild(b);
   });
-  function setChord(id) {
+  function setChord(id, fromSong) {
     const c = CHORDS.find(x => x.id === id); if (!c) return;
+    if (!fromSong && song.id) pickSong(null);
     current = c;
     chordBox.querySelectorAll('.chord-btn').forEach(b => b.setAttribute('aria-checked', b.dataset.id === id ? 'true' : 'false'));
     placeDots(false);
@@ -317,6 +340,12 @@
     const eighth = 60 / golpe.bpm / 2;
     while (golpe.next < ctx.currentTime + 0.12) {
       const st = PATTERN[golpe.step % 6];
+      if (golpe.step % 6 === 0 && song.id) {
+        const bar = song.i % SONGS[song.id].bars.length, at0 = golpe.next;
+        setChord(SONGS[song.id].bars[bar], true);
+        setTimeout(() => markBar(bar), Math.max(0, (at0 - ctx.currentTime) * 1000));
+        song.i++;
+      }
       if (st) strum(st.d, st.v, golpe.next, !!st.m);
       maraca(golpe.next, golpe.step % 6 === 0 || golpe.step % 6 === 3 ? 1 : 0.55);
       if (golpe.step % 6 === 0) bassNote(current.bass, golpe.next, eighth * 3);
@@ -332,12 +361,33 @@
     golpeBtn.setAttribute('aria-pressed', String(golpe.on));
     golpeBtn.textContent = golpe.on ? 'Parar golpe' : 'Golpe de joropo';
     document.getElementById('instrument').classList.toggle('playing', golpe.on);
-    if (golpe.on) { golpe.step = 0; golpe.next = ctx.currentTime + 0.08; golpe.timer = setInterval(scheduler, 25); hideHint(); }
-    else { clearInterval(golpe.timer); beatCells.forEach(c => c.classList.remove('on')); }
+    if (golpe.on) { song.i = 0; golpe.step = 0; golpe.next = ctx.currentTime + 0.08; golpe.timer = setInterval(scheduler, 25); hideHint(); }
+    else { clearInterval(golpe.timer); beatCells.forEach(c => c.classList.remove('on')); markBar(-1); }
   }
   golpeBtn.addEventListener('click', () => toggleGolpe());
   const beatCells = [...document.querySelectorAll('#beat span')];
   window.addEventListener('cuatro:beat', e => { if (!golpe.on) return; beatCells.forEach((c, i) => c.classList.toggle('on', i === e.detail)); });
+  // ---------- Acompañar una canción ----------
+  const song = { id: null, i: 0 };
+  const songBtns = [...document.querySelectorAll('.song-btn')], barsEl = document.getElementById('bars');
+  function renderBars() {
+    if (!barsEl) return;
+    barsEl.innerHTML = song.id ? SONGS[song.id].bars.map(id => `<li>${CHORDS.find(c => c.id === id).label}</li>`).join('') : '';
+    barsEl.hidden = !song.id;
+  }
+  function markBar(i) { barsEl && [...barsEl.children].forEach((li, k) => li.classList.toggle('on', k === i)); }
+  function pickSong(id) {
+    song.id = id; song.i = 0;
+    songBtns.forEach(b => b.setAttribute('aria-checked', String((b.dataset.song || null) === id)));
+    renderBars();
+    if (id) {
+      golpe.bpm = SONGS[id].bpm; tempo.value = golpe.bpm; tempoOut.textContent = golpe.bpm;
+      if (!golpe.on) { setChord(SONGS[id].bars[0], true); toggleGolpe(true); }
+      else { song.i = 0; }
+    }
+  }
+  songBtns.forEach(b => b.addEventListener('click', () => { initAudio(); pickSong(b.dataset.song || null); }));
+
   document.addEventListener('visibilitychange', () => { if (document.hidden && golpe.on) toggleGolpe(false); });
 
   // ---------- Teclado ----------
@@ -346,7 +396,7 @@
     const r = svg.getBoundingClientRect();
     const visible = r.bottom > 0 && r.top < window.innerHeight;
     if (!visible) return;
-    if (/^[1-6]$/.test(e.key)) { setChord(CHORDS[+e.key - 1].id); if (!golpe.on) strum('down', 0.85); }
+    if (/^[1-7]$/.test(e.key)) { setChord(CHORDS[+e.key - 1].id); if (!golpe.on) strum('down', 0.85); }
     else if (e.code === 'Space' && !e.target.closest('button, a, summary')) { e.preventDefault(); strum(e.shiftKey ? 'up' : 'down', 0.9); }
   });
 
@@ -398,5 +448,16 @@
   mqVertical.addEventListener('change', layout);
   if (!reduceMotion) [0, 1, 2, 3].forEach(s => setTimeout(() => excite(s, 0.7), 900 + s * 140));
 
-  window.Cuatro = { strum, setChord, initAudio, get ctx() { return ctx; }, get master() { return master; } };
+  // nota de referencia del afinador: corta la anterior para que no se mezclen
+  let refPrev = null;
+  function refNote(f, gain = 0.6) {
+    initAudio(); if (!ctx) return;
+    const t = ctx.currentTime + 0.01;
+    if (refPrev) { try { refPrev.g.gain.cancelScheduledValues(t); refPrev.g.gain.setTargetAtTime(0, t, 0.015); refPrev.src.stop(t + 0.1); } catch (_) {} }
+    const src = ctx.createBufferSource(); src.buffer = ksBuffer(f, { bright: 0.6, dur: 2.4, decay: 0.998 }); src.playbackRate.value = src.buffer.rate;
+    const g = ctx.createGain(); g.gain.value = gain;
+    src.connect(g); g.connect(dry); src.start(t + 0.03);
+    refPrev = { src, g };
+  }
+  window.Cuatro = { strum, setChord, initAudio, playNote: refNote, get level() { return level; }, get dry() { return dry; }, get ctx() { return ctx; }, get master() { return master; } };
 })();

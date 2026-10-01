@@ -22,6 +22,7 @@
     <a href="#leccion">Lección gratis</a>
     <a href="#escucha">Escucha</a>
     <a href="#ruta">La ruta</a>
+    <a href="#afinador">Afinador</a>
     <a href="#precios">Precios</a>
   </nav>
   <a class="btn btn-small nav-cta" href="#precios">Empezar gratis</a>
@@ -32,6 +33,7 @@
     <a href="#leccion">Lección gratis</a>
     <a href="#escucha">Escucha</a>
     <a href="#ruta">La ruta</a>
+    <a href="#afinador">Afinador</a>
     <a href="#app">La app</a>
     <a href="#precios">Precios</a>
   </nav>
@@ -42,6 +44,7 @@
 
 <!-- ============ HERO: el cuatro que se toca ============ -->
 <section class="hero" data-mm="Texto, Gráficos, Animación, Interactividad, Audio">
+  <canvas class="sky" id="sky" aria-hidden="true"></canvas>
   <div class="hero-copy">
     <h1 class="hero-title"><span>Toca</span> <span>antes</span> <span>de leer.</span></h1>
     <p class="hero-sub">Esto es un cuatro llanero de verdad, afinado La, Re, Fa#, Si. Arrastra sobre las cuerdas para tocarlo. En 8 semanas vas a tocar joropo con el tuyo.</p>
@@ -63,7 +66,16 @@
         <div class="beat" id="beat" aria-hidden="true"><span>↓</span><span>·</span><span>↓</span><span>↑</span><span>✕</span><span>↑</span></div>
         <label class="tempo">Velocidad <input id="tempo" type="range" min="90" max="190" value="150" aria-label="Velocidad del golpe en pulsos por minuto"><output id="tempoOut">150</output></label>
       </div>
-      <p class="keys">Teclado: <kbd>1</kbd>–<kbd>6</kbd> cambia de acorde, <kbd>Espacio</kbd> rasguea.</p>
+      <div class="songs">
+        <p class="songs-label" id="songsLabel">Acompaña una canción</p>
+        <div class="song-list" role="radiogroup" aria-labelledby="songsLabel">
+          <button class="song-btn" type="button" role="radio" data-song="" aria-checked="true">Libre</button>
+          <button class="song-btn" type="button" role="radio" data-song="seis" aria-checked="false">Seis por derecho</button>
+          <button class="song-btn" type="button" role="radio" data-song="pajarillo" aria-checked="false">Pajarillo</button>
+        </div>
+        <ol class="bars" id="bars" hidden aria-label="Compases de la canción"></ol>
+      </div>
+      <p class="keys">Teclado: <kbd>1</kbd>–<kbd>7</kbd> cambia de acorde, <kbd>Espacio</kbd> rasguea.</p>
     </div>
 
     <div class="reto" id="reto" aria-live="polite">
@@ -160,10 +172,13 @@
 <!-- ============ IMÁGENES: la app ============ -->
 <section class="app-sec" id="app" data-mm="Imágenes, Texto">
   <div class="app-sky">
-    <picture>
-      <source media="(max-width: 700px)" srcset="assets/img/llano-sm.webp">
-      <img src="assets/img/llano.webp" alt="Atardecer en el llano con morichales y garzas volando sobre un caño" width="1600" height="900" loading="lazy">
-    </picture>
+    <div class="llano" id="llano" role="img" aria-label="Atardecer en el llano con morichales y garzas volando sobre un caño. Al bajar, el sol se oculta.">
+      <img class="lyr lyr-cielo" src="assets/img/llano-cielo.webp" alt="" width="1600" height="900" loading="lazy">
+      <img class="lyr lyr-sol" src="assets/img/llano-sol.webp" alt="" width="1600" height="900" loading="lazy">
+      <div class="lyr lyr-noche"></div>
+      <img class="lyr lyr-garzas" src="assets/img/llano-garzas.webp" alt="" width="1600" height="900" loading="lazy">
+      <img class="lyr lyr-tierra" src="assets/img/llano-tierra.webp" alt="" width="1600" height="900" loading="lazy">
+    </div>
     <h2>Del llano a tu bolsillo.</h2>
   </div>
   <div class="phones">
@@ -172,6 +187,39 @@
     <figure><img src="assets/img/app-3.webp" alt="Pantalla de progreso con porcentaje por acorde y velocidad del golpe en 142 pulsos" width="585" height="1206" loading="lazy"><figcaption><strong>Progreso.</strong> Qué acordes ya te salen limpios y cuánto ha subido tu golpe.</figcaption></figure>
   </div>
   <div class="gal-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+</section>
+
+<!-- ============ AFINADOR ============ -->
+<section class="sec sec-green" id="afinador" data-mm="Audio, Interactividad, Gráficos, Animación">
+  <div class="split tuner-split">
+    <div class="split-copy">
+      <h2>Afina tu cuatro aquí mismo.</h2>
+      <p>Activa el micrófono y toca una cuerda cerca del teléfono o del computador. La aguja te dice si subir o bajar la clavija.</p>
+      <p>¿Sin cuatro a la mano? Toca las notas de referencia y escucha cómo debe sonar cada cuerda.</p>
+      <div class="tuner-actions">
+        <button class="btn" id="micBtn" type="button" aria-pressed="false">Usar micrófono</button>
+      </div>
+      <p class="tuner-privacy">El sonido se analiza dentro de tu navegador. No se graba ni se envía a ningún lado.</p>
+    </div>
+    <div class="tuner" id="tuner">
+      <svg class="gauge" viewBox="0 0 400 230" aria-hidden="true">
+        <path class="g-track" d="M40 210 A160 160 0 0 1 360 210"/>
+        <path class="g-ok" d="M182 51 A160 160 0 0 1 218 51"/>
+        <g class="g-ticks"></g>
+        <g class="needle" id="needle"><line x1="200" y1="210" x2="200" y2="62"/><circle cx="200" cy="210" r="14"/></g>
+      </svg>
+      <div class="tuner-read">
+        <p class="t-note" id="tNote">–</p>
+        <p class="t-info" id="tInfo" aria-live="polite">Toca una cuerda o una nota de referencia</p>
+      </div>
+      <div class="t-strings" role="group" aria-label="Notas de referencia">
+        <button type="button" data-s="0"><span>La</span><small>220 Hz</small></button>
+        <button type="button" data-s="1"><span>Re</span><small>294 Hz</small></button>
+        <button type="button" data-s="2"><span>Fa#</span><small>370 Hz</small></button>
+        <button type="button" data-s="3"><span>Si</span><small>247 Hz</small></button>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ============ PRECIOS ============ -->
@@ -238,5 +286,7 @@
 <script src="js/peaks.js"></script>
 <script src="js/cuatro.js"></script>
 <script src="js/main.js"></script>
+<script src="js/tuner.js"></script>
+<script src="js/effects.js"></script>
 </body>
 </html>
