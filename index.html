@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cuatro: aprende cuatro llanero en 8 semanas</title>
+  <meta name="description" content="La app que te enseña a tocar cuatro llanero desde cero: lecciones en video, afinador, golpe de joropo y retos diarios.">
+  <meta property="og:title" content="Cuatro: aprende cuatro llanero en 8 semanas">
+  <meta property="og:description" content="Toca antes de leer. Un cuatro de verdad, en tu navegador.">
+  <meta property="og:image" content="/assets/img/og.jpg">
+  <meta name="theme-color" content="#161A3B">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/bricolage-grotesque-latin-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+
+<header class="nav">
+  <a class="brand" href="#" aria-label="Cuatro, inicio"><span class="brand-mark" aria-hidden="true"></span>Cuatro</a>
+  <nav aria-label="Secciones">
+    <a href="#leccion">Lección gratis</a>
+    <a href="#escucha">Escucha</a>
+    <a href="#ruta">La ruta</a>
+    <a href="#precios">Precios</a>
+  </nav>
+  <a class="btn btn-small" href="#precios">Empezar gratis</a>
+</header>
+
+<main id="contenido">
+
+<!-- ============ HERO: el cuatro que se toca ============ -->
+<section class="hero" data-mm="Texto, Gráficos, Animación, Interactividad, Audio">
+  <div class="hero-copy">
+    <h1 class="hero-title"><span>Toca</span> <span>antes</span> <span>de leer.</span></h1>
+    <p class="hero-sub">Esto es un cuatro llanero de verdad, afinado La, Re, Fa#, Si. Arrastra sobre las cuerdas para tocarlo. En 8 semanas vas a tocar joropo con el tuyo.</p>
+  </div>
+
+  <div class="instrument" id="instrument">
+    <div class="neck-wrap" id="neckWrap">
+      <svg id="neck" role="img" aria-label="Diapasón del cuatro. Arrastra el puntero o el dedo sobre las cuerdas para tocar."></svg>
+      <p class="neck-hint" id="neckHint"><span class="hint-dot" aria-hidden="true"></span><span class="hint-fine">Haz clic y arrastra sobre las cuerdas</span><span class="hint-touch">Desliza el dedo sobre las cuerdas</span></p>
+    </div>
+
+    <div class="controls">
+      <div class="chords" role="radiogroup" aria-label="Acorde">
+        <!-- botones generados por cuatro.js -->
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="strumBtn" type="button" aria-keyshortcuts="Space">Rasguear</button>
+        <button class="btn" id="golpeBtn" type="button" aria-pressed="false">Tocar golpe de joropo</button>
+        <label class="tempo">Velocidad <input id="tempo" type="range" min="90" max="190" value="150" aria-label="Velocidad del golpe en pulsos por minuto"><output id="tempoOut">150</output></label>
+      </div>
+      <p class="keys">Teclado: <kbd>1</kbd>–<kbd>6</kbd> cambia de acorde, <kbd>Espacio</kbd> rasguea.</p>
+    </div>
+
+    <div class="reto" id="reto" aria-live="polite">
+      <div class="reto-head">
+        <p class="reto-title">Reto: toca la progresión de la lección 1</p>
+        <button class="btn btn-ghost btn-small" id="retoBtn" type="button">Empezar reto</button>
+      </div>
+      <ol class="reto-steps" id="retoSteps"></ol>
+      <p class="reto-msg" id="retoMsg">Elige el acorde marcado y rasguea. Si fallas, no pasa nada: vuelve a intentar.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VIDEO: lección 1 ============ -->
+<section class="sec sec-light" id="leccion" data-mm="Video, Texto, Interactividad">
+  <div class="split">
+    <div class="split-copy">
+      <h2>La lección 1, completa y gratis.</h2>
+      <p>Veinte segundos para entender cómo aprende uno con Cuatro: ves dónde va cada dedo, oyes cómo debe sonar y practicas al mismo ritmo de la pantalla.</p>
+      <p>Al final, los tres acordes se juntan en tu primer golpe de joropo.</p>
+      <div class="chapters" role="group" aria-label="Capítulos del video">
+        <button type="button" data-t="1.5">Re</button>
+        <button type="button" data-t="5.1">La7</button>
+        <button type="button" data-t="8.7">Sol</button>
+        <button type="button" data-t="12.1">Golpe</button>
+      </div>
+    </div>
+    <figure class="video-frame">
+      <video id="video" playsinline preload="metadata" poster="assets/video/leccion-1-poster.jpg">
+        <source src="assets/video/leccion-1.mp4" type="video/mp4">
+        <source src="assets/video/leccion-1.webm" type="video/webm">
+        Tu navegador no reproduce video. <a href="assets/video/leccion-1.mp4">Descarga la lección</a>.
+      </video>
+      <button class="video-play" id="videoPlay" type="button" aria-label="Reproducir lección">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M17 12 L37 24 L17 36Z"/></svg>
+      </button>
+      <div class="video-bar">
+        <button type="button" id="videoToggle" class="vb-btn" aria-label="Reproducir">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path class="ico-play" d="M8 5 L19 12 L8 19Z"/><g class="ico-pause"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></g></svg>
+        </button>
+        <div class="vb-track" id="videoTrack" role="slider" tabindex="0" aria-label="Posición del video" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="vb-fill" id="videoFill"></div>
+          <span class="vb-mark" style="left:7%"></span><span class="vb-mark" style="left:23.7%"></span><span class="vb-mark" style="left:40.5%"></span><span class="vb-mark" style="left:56.3%"></span>
+        </div>
+        <span class="vb-time" id="videoTime">0:00</span>
+        <button type="button" id="videoMute" class="vb-btn" aria-label="Silenciar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="ico-wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="ico-x" d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <figcaption>Lección 1: Re, La7, Sol y el golpe de joropo.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ AUDIO: semana 1 vs semana 8 ============ -->
+<section class="sec sec-sabana" id="escucha" data-mm="Audio, Gráficos, Animación, Interactividad">
+  <h2 class="narrow">Así suenas la primera semana. Así suenas en la octava.</h2>
+  <p class="lead narrow">Las dos grabaciones usan los mismos acordes. Lo que cambia es la mano derecha: el golpe, el apagado y el tiempo. Eso es lo que entrena Cuatro.</p>
+  <div class="players">
+    <article class="player" data-src="assets/audio/semana1.mp3" data-peaks="semana1">
+      <div class="player-top">
+        <button class="pbtn" type="button" aria-label="Reproducir semana 1"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ico-play" d="M8 5 L19 12 L8 19Z"/><g class="ico-pause"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></g></svg></button>
+        <div><h3>Semana 1</h3><p>Rasgueo hacia abajo, 82 pulsos por minuto. Todavía se nota la pausa al cambiar de acorde.</p></div>
+      </div>
+      <canvas class="wave" height="96" aria-label="Forma de onda de la grabación de la semana 1. Clic para saltar a ese punto."></canvas>
+      <div class="player-meta"><span class="ptime">0:00</span><span>0:13</span></div>
+    </article>
+    <article class="player" data-src="assets/audio/semana8.mp3" data-peaks="semana8">
+      <div class="player-top">
+        <button class="pbtn" type="button" aria-label="Reproducir semana 8"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ico-play" d="M8 5 L19 12 L8 19Z"/><g class="ico-pause"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></g></svg></button>
+        <div><h3>Semana 8</h3><p>Golpe de joropo completo a 178 pulsos, con maracas y bajo de fondo.</p></div>
+      </div>
+      <canvas class="wave" height="96" aria-label="Forma de onda de la grabación de la semana 8. Clic para saltar a ese punto."></canvas>
+      <div class="player-meta"><span class="ptime">0:00</span><span>0:15</span></div>
+    </article>
+  </div>
+  <canvas class="spectrum" id="spectrum" height="120" aria-hidden="true"></canvas>
+</section>
+
+<!-- ============ GRÁFICO: la ruta de 8 semanas ============ -->
+<section class="sec sec-dark" id="ruta" data-mm="Gráficos, Animación, Interactividad, Texto">
+  <div class="ruta-head">
+    <h2>La ruta de 8 semanas</h2>
+    <p class="lead">Cada semana sumas acordes y subes la velocidad del golpe. Toca una semana para ver qué aprendes.</p>
+  </div>
+  <div class="chart-wrap">
+    <svg id="chart" viewBox="0 0 960 400" role="img" aria-labelledby="chartDesc"></svg>
+    <p id="chartDesc" class="sr-only">Gráfico de barras y línea: los acordes dominados suben de 3 en la semana 1 a 12 en la semana 8, y la velocidad del golpe sube de 60 a 180 pulsos por minuto.</p>
+    <div class="legend"><span><i class="lg-bar"></i>Acordes que dominas</span><span><i class="lg-line"></i>Velocidad del golpe (pulsos por minuto)</span></div>
+  </div>
+  <div class="week-detail" id="weekDetail" aria-live="polite"></div>
+</section>
+
+<!-- ============ IMÁGENES: la app ============ -->
+<section class="app-sec" id="app" data-mm="Imágenes, Texto">
+  <div class="app-sky">
+    <picture>
+      <source media="(max-width: 700px)" srcset="assets/img/llano-sm.webp">
+      <img src="assets/img/llano.webp" alt="Atardecer en el llano con morichales y garzas volando sobre un caño" width="1600" height="900" loading="lazy">
+    </picture>
+    <h2>Del llano a tu bolsillo.</h2>
+  </div>
+  <div class="phones">
+    <figure><img src="assets/img/app-1.webp" alt="Pantalla de práctica del día: 15 minutos, racha de 12 días y lista de ejercicios" width="585" height="1206" loading="lazy"><figcaption><strong>Práctica del día.</strong> Quince minutos, armados para la semana en que vas.</figcaption></figure>
+    <figure><img src="assets/img/app-2.webp" alt="Pantalla del afinador marcando Fa sostenido casi perfecto" width="585" height="1206" loading="lazy"><figcaption><strong>Afinador.</strong> Escucha cada cuerda y te dice si subir o bajar.</figcaption></figure>
+    <figure><img src="assets/img/app-3.webp" alt="Pantalla de progreso con porcentaje por acorde y velocidad del golpe en 142 pulsos" width="585" height="1206" loading="lazy"><figcaption><strong>Progreso.</strong> Qué acordes ya te salen limpios y cuánto ha subido tu golpe.</figcaption></figure>
+  </div>
+</section>
+
+<!-- ============ PRECIOS ============ -->
+<section class="sec sec-light" id="precios" data-mm="Texto, Interactividad">
+  <div class="price-head">
+    <h2>Empieza sin pagar.</h2>
+    <div class="billing" role="group" aria-label="Forma de pago">
+      <button type="button" class="on" data-bill="mes" aria-pressed="true">Mensual</button>
+      <button type="button" data-bill="anio" aria-pressed="false">Anual, 2 meses gratis</button>
+    </div>
+  </div>
+  <div class="plans">
+    <article class="plan">
+      <h3>Gratis</h3>
+      <p class="price"><span>$0</span></p>
+      <ul><li>Lecciones 1 y 2</li><li>Afinador</li><li>Reto diario</li></ul>
+      <a class="btn btn-ghost-dark" href="#">Crear cuenta</a>
+    </article>
+    <article class="plan plan-main">
+      <h3>Completo</h3>
+      <p class="price"><span data-mes="$24.900" data-anio="$207.500">$24.900</span><small data-mes="al mes" data-anio="al año">al mes</small></p>
+      <ul><li>Las 8 semanas de la ruta</li><li>Golpe de joropo, pajarillo y seis por derecho</li><li>Revisión de tu rasgueo por audio</li><li>Funciona sin internet</li></ul>
+      <a class="btn" href="#">Probar 7 días gratis</a>
+    </article>
+    <article class="plan">
+      <h3>Kit con cuatro</h3>
+      <p class="price"><span>$590.000</span><small>una vez</small></p>
+      <ul><li>Cuatro de cedro hecho en Villavicencio</li><li>Un año del plan Completo</li><li>Estuche y cuerdas de repuesto</li></ul>
+      <a class="btn btn-ghost-dark" href="#">Pedir el kit</a>
+    </article>
+  </div>
+  <p class="note">Precios en pesos colombianos.</p>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="sec sec-light faq-sec" data-mm="Texto, Interactividad">
+  <h2>Preguntas frecuentes</h2>
+  <div class="faq">
+    <details><summary>¿Necesito saber música?</summary><p>No. La ruta empieza en cómo coger el cuatro y afinarlo. No vas a leer partituras: todo se aprende con diagramas, audio y video.</p></details>
+    <details><summary>No tengo cuatro. ¿Puedo empezar igual?</summary><p>Sí. Las dos primeras lecciones funcionan con el cuatro virtual de esta página. Cuando quieras, el kit trae uno de cedro hecho en Villavicencio.</p></details>
+    <details><summary>¿Sirve para el cuatro venezolano?</summary><p>Sí. Usa la misma afinación (La, Re, Fa#, Si) y los mismos acordes base.</p></details>
+    <details><summary>¿Cuánto tengo que practicar?</summary><p>Quince minutos al día, cinco días a la semana. La app arma la práctica según la semana en que vas.</p></details>
+    <details><summary>¿Funciona sin internet?</summary><p>En el plan Completo descargas las lecciones y practicas sin conexión. El progreso se sincroniza cuando vuelves a tener señal.</p></details>
+  </div>
+</section>
+
+<!-- ============ CTA FINAL ============ -->
+<section class="final" data-mm="Texto, Animación">
+  <h2>El primer golpe de joropo está a una semana.</h2>
+  <a class="btn btn-dark" href="#">Empezar gratis</a>
+</section>
+</main>
+
+<footer class="foot">
+  <p>Cuatro es un producto ficticio creado como proyecto académico para Sistemas Multimedia, Universidad Cooperativa de Colombia, sede Villavicencio.</p>
+  <p>Diseño y desarrollo: David Santiago Moreno Vanegas. Video, audio e imágenes generados para este proyecto.</p>
+</footer>
+
+<button class="mm-toggle" id="mmToggle" type="button" aria-pressed="false">
+  <span class="mm-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+  Ver componentes multimedia
+</button>
+
+<script src="js/peaks.js"></script>
+<script src="js/cuatro.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

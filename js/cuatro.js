@@ -1,0 +1,384 @@
+/* Cuatro: el instrumento interactivo del hero.
+   Síntesis Karplus-Strong en Web Audio, diapasón en SVG, golpe de joropo y reto. */
+(() => {
+  'use strict';
+
+  // ---------- Datos del instrumento ----------
+  const OPEN = [220.00, 293.66, 369.99, 246.94];           // La3 Re4 Fa#4 Si3 (afinación reentrante)
+  const STRING_NAMES = ['La', 'Re', 'Fa#', 'Si'];
+  const CHORDS = [
+    { id: 'Re',  label: 'Re',   frets: [0, 0, 0, 3], bass: 73.42 },
+    { id: 'Sol', label: 'Sol',  frets: [2, 0, 1, 0], bass: 98.00 },
+    { id: 'La7', label: 'La7',  frets: [0, 2, 1, 2], bass: 110.0 },
+    { id: 'La',  label: 'La',   frets: [0, 2, 3, 2], bass: 110.0 },
+    { id: 'Mim', label: 'Mi m', frets: [2, 2, 1, 0], bass: 82.41 },
+    { id: 'Sim', label: 'Si m', frets: [2, 0, 0, 0], bass: 61.74 },
+  ];
+  const RETO = ['Re', 'La7', 'Re', 'Sol', 'La7', 'Re'];
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- Audio ----------
+  let ctx = null, master = null, dry = null, reverb = null;
+  const bufCache = new Map();
+
+  function initAudio() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ctx = new AC();
+    master = ctx.createDynamicsCompressor();
+    master.threshold.value = -14; master.ratio.value = 3;
+    const out = ctx.createGain(); out.gain.value = 0.9;
+    master.connect(out); out.connect(ctx.destination);
+
+    // caja de resonancia: realce de graves + brillo controlado
+    const bodyF = ctx.createBiquadFilter(); bodyF.type = 'peaking'; bodyF.frequency.value = 260; bodyF.Q.value = 1.1; bodyF.gain.value = 5;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6800;
+    dry = ctx.createGain();
+    dry.connect(bodyF); bodyF.connect(lp); lp.connect(master);
+
+    // reverb corta de sala (respuesta al impulso generada)
+    reverb = ctx.createConvolver();
+    const len = Math.floor(ctx.sampleRate * 0.9), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = ir.getChannelData(c);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+    }
+    reverb.buffer = ir;
+    const wet = ctx.createGain(); wet.gain.value = 0.16;
+    lp.connect(reverb); reverb.connect(wet); wet.connect(master);
+    window.dispatchEvent(new Event('cuatro:audio'));
+  }
+
+  // Karplus-Strong: una ráfaga de ruido que se repite y se suaviza = cuerda pulsada
+  function ksBuffer(freq, opts = {}) {
+    const bright = opts.bright ?? 0.6, dur = opts.dur ?? 1.8, decay = opts.decay ?? 0.9966;
+    const key = `${freq.toFixed(2)}|${bright}|${dur}|${decay}`;
+    if (bufCache.has(key)) return bufCache.get(key);
+    const sr = ctx.sampleRate, n = Math.floor(sr * dur), p = Math.max(2, Math.round(sr / freq));
+    const buf = ctx.createBuffer(1, n, sr), y = buf.getChannelData(0);
+    let prev = 0;
+    const a = 1 - bright;
+    for (let i = 0; i < p && i < n; i++) { const r = Math.random() * 2 - 1; prev = (1 - a) * r + a * prev; y[i] = prev; }
+    for (let i = p; i < n; i++) y[i] = decay * 0.5 * (y[i - p] + y[i - p - 1 >= 0 ? i - p - 1 : 0]);
+    bufCache.set(key, buf);
+    return buf;
+  }
+
+  function playNote(freq, when, gain, opts) {
+    if (!ctx) return;
+    const src = ctx.createBufferSource(); src.buffer = ksBuffer(freq, opts);
+    const g = ctx.createGain(); g.gain.value = gain;
+    if (opts && opts.mute) { g.gain.setValueAtTime(gain, when); g.gain.exponentialRampToValueAtTime(0.001, when + 0.11); }
+    src.connect(g); g.connect(dry); src.start(when); src.stop(when + (opts?.dur ?? 1.8));
+  }
+
+  let noiseBuf = null;
+  function noise() {
+    if (noiseBuf) return noiseBuf;
+    const n = Math.floor(ctx.sampleRate * 0.1); noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return noiseBuf;
+  }
+  function maraca(when, accent) {
+    const src = ctx.createBufferSource(); src.buffer = noise();
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 6500; bp.Q.value = 0.9;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when); g.gain.linearRampToValueAtTime(0.5 * accent, when + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.001, when + 0.07);
+    src.connect(bp); bp.connect(g); g.connect(master); src.start(when); src.stop(when + 0.1);
+  }
+  function bassNote(freq, when, dur) {
+    const src = ctx.createBufferSource(); src.buffer = ksBuffer(freq, { bright: 0.15, dur: dur + 0.2, decay: 0.9985 });
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380;
+    const g = ctx.createGain(); g.gain.value = 1.4;
+    src.connect(lp); lp.connect(g); g.connect(master); src.start(when);
+  }
+
+  // ---------- Estado ----------
+  let current = CHORDS[0];
+  const freqOf = (s, chord = current) => OPEN[s] * Math.pow(2, chord.frets[s] / 12);
+
+  // ---------- Diapasón SVG ----------
+  const svg = document.getElementById('neck');
+  if (!svg) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+
+  let L = null;            // geometría actual
+  const strings = [];      // {path, y, amp, phase}
+  const dots = [];         // círculos de los dedos
+
+  function layout() {
+    const w = svg.parentElement.clientWidth;
+    const compact = w < 640;
+    const W = compact ? 640 : 1200, H = compact ? 380 : 330;
+    const nFrets = compact ? 4 : 7;
+    const nutX = compact ? 104 : 90;
+    const endX = compact ? W - 8 : W - 190;           // en escritorio queda espacio para la boca del cuatro
+    const top = compact ? 70 : 72, gap = compact ? 78 : 62;
+    const frets = [];
+    // espaciado de trastes decreciente (regla del 17,817)
+    let x = nutX, scale = (endX - nutX) / (1 - Math.pow(1 - 1 / 17.817, nFrets));
+    frets.push(x);
+    for (let i = 1; i <= nFrets; i++) { x = nutX + scale * (1 - Math.pow(1 - 1 / 17.817, i)); frets.push(x); }
+    L = { W, H, compact, nFrets, nutX, endX, top, gap, frets };
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    build();
+  }
+
+  function build() {
+    svg.innerHTML = '';
+    strings.length = 0; dots.length = 0;
+    const { W, H, compact, nutX, endX, top, gap, frets } = L;
+    const boardTop = top - 40, boardH = gap * 3 + 80;
+
+    const defs = mk('defs', {}, svg);
+    defs.innerHTML = `
+      <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#9A5329"/><stop offset=".5" stop-color="#7A3E1D"/><stop offset="1" stop-color="#9A5329"/>
+      </linearGradient>
+      <radialGradient id="hole" cx=".5" cy=".5" r=".5"><stop offset=".55" stop-color="#0b0d1f"/><stop offset="1" stop-color="#1d2148"/></radialGradient>`;
+
+    // tapa del cuatro (solo escritorio)
+    if (!compact) {
+      mk('path', { d: `M${endX - 10} ${boardTop - 18} C ${endX + 120} ${boardTop - 70}, ${W + 80} ${boardTop - 20}, ${W + 80} ${H / 2} C ${W + 80} ${H - boardTop + 20}, ${endX + 120} ${H - boardTop + 70}, ${endX - 10} ${H - boardTop + 18}Z`, fill: '#D9A15A' }, svg);
+      mk('circle', { cx: endX + 120, cy: top + gap * 1.5, r: 72, fill: '#5B3415' }, svg);
+      mk('circle', { cx: endX + 120, cy: top + gap * 1.5, r: 62, fill: 'url(#hole)' }, svg);
+    }
+    // diapasón
+    mk('rect', { x: nutX - 26, y: boardTop, width: endX - nutX + 26, height: boardH, rx: 14, fill: 'url(#wood)' }, svg);
+    // marcadores (trastes 3, 5, 7)
+    [3, 5, 7].forEach(f => { if (f <= L.nFrets) mk('circle', { cx: (frets[f - 1] + frets[f]) / 2, cy: top + gap * 1.5, r: 8, fill: '#F1D9B0', opacity: .45 }, svg); });
+    // cejuela y trastes
+    mk('rect', { x: nutX - 8, y: boardTop, width: 10, height: boardH, fill: '#FBFBF7' }, svg);
+    for (let i = 1; i < frets.length; i++) {
+      mk('rect', { x: frets[i] - 2, y: boardTop, width: 4, height: boardH, fill: '#C9CCD6' }, svg);
+      const n = mk('text', { x: (frets[i - 1] + frets[i]) / 2, y: boardTop + boardH + 26, 'text-anchor': 'middle', class: 'fret-num' }, svg);
+      n.textContent = i;
+    }
+    // cuerdas
+    for (let s = 0; s < 4; s++) {
+      const y = top + s * gap;
+      const lab = mk('text', { x: nutX - 40, y: y + 7, 'text-anchor': 'end', class: 'str-name' }, svg);
+      lab.textContent = STRING_NAMES[s];
+      const path = mk('path', { d: `M${nutX} ${y} L${compact ? W : endX + 120} ${y}`, class: 'string', 'stroke-width': s === 1 || s === 3 ? 3.4 : 2.4 }, svg);
+      strings.push({ path, y, amp: 0, t0: 0, x2: compact ? W : endX + 120 });
+    }
+    // dedos
+    for (let s = 0; s < 4; s++) {
+      const g = mk('g', { class: 'dot' }, svg);
+      mk('circle', { r: compact ? 25 : 21 }, g);
+      const t = mk('text', { 'text-anchor': 'middle', y: 7 }, g);
+      dots.push({ g, t });
+    }
+    // zona de toque transparente (encima de todo)
+    mk('rect', { x: 0, y: 0, width: W, height: H, fill: 'transparent', class: 'hit' }, svg);
+    placeDots(true);
+  }
+
+  function placeDots(instant) {
+    for (let s = 0; s < 4; s++) {
+      const f = current.frets[s], d = dots[s];
+      if (!f || f > L.nFrets) { d.g.classList.remove('on'); continue; }
+      const x = (L.frets[f - 1] + L.frets[f]) / 2, y = L.top + s * L.gap;
+      d.g.style.transition = instant ? 'none' : '';
+      d.g.setAttribute('transform', `translate(${x} ${y})`);
+      d.t.textContent = f;
+      d.g.classList.add('on');
+    }
+  }
+
+  // vibración de cuerdas
+  let raf = 0;
+  function excite(s, v = 1) {
+    const st = strings[s]; if (!st) return;
+    st.amp = Math.min(1.3, st.amp * 0.4 + v); st.t0 = performance.now();
+    if (!raf) raf = requestAnimationFrame(tick);
+  }
+  function tick(now) {
+    let alive = false;
+    for (const st of strings) {
+      if (st.amp < 0.01) { st.path.setAttribute('d', `M${L.nutX} ${st.y} L${st.x2} ${st.y}`); st.path.classList.remove('ringing'); continue; }
+      alive = true;
+      const dt = (now - st.t0) / 1000;
+      const a = st.amp * Math.exp(-dt * 3.4);
+      if (a < 0.01) { st.amp = 0; continue; }
+      const off = reduceMotion ? 0 : a * (L.compact ? 16 : 13) * Math.sin(now / 1000 * 2 * Math.PI * 13);
+      const mid = (L.nutX + st.x2) / 2;
+      st.path.setAttribute('d', `M${L.nutX} ${st.y} Q${mid} ${st.y + off * 2} ${st.x2} ${st.y}`);
+      st.path.classList.add('ringing');
+    }
+    raf = alive ? requestAnimationFrame(tick) : 0;
+  }
+
+  // ---------- Tocar ----------
+  function pluck(s, vel = 0.8, when) {
+    initAudio();
+    const t = when ?? (ctx ? ctx.currentTime : 0);
+    if (ctx) playNote(freqOf(s), t, 0.55 * vel, { bright: 0.45 + vel * 0.35 });
+    const delay = ctx && when ? Math.max(0, (when - ctx.currentTime) * 1000) : 0;
+    setTimeout(() => excite(s, vel), delay);
+  }
+
+  function strum(dir = 'down', vel = 0.9, when, mute = false) {
+    initAudio();
+    const order = dir === 'down' ? [0, 1, 2, 3] : [3, 2, 1, 0];
+    const t0 = when ?? (ctx ? ctx.currentTime + 0.005 : 0);
+    order.forEach((s, k) => {
+      const t = t0 + k * 0.011;
+      if (ctx) playNote(freqOf(s), t, (dir === 'down' ? 0.5 : 0.38) * vel, mute ? { bright: 0.35, dur: 0.15, decay: 0.97, mute: true } : { bright: 0.45 + vel * 0.3 });
+      const delay = ctx ? Math.max(0, (t - ctx.currentTime) * 1000) : k * 11;
+      setTimeout(() => excite(s, mute ? 0.25 : vel), delay);
+    });
+    if (mute && ctx) maraca(t0, 0.5);
+    window.dispatchEvent(new CustomEvent('cuatro:strum', { detail: { chord: current.id, dir, mute } }));
+  }
+
+  // ---------- Entrada del puntero: cruzar cuerdas las toca ----------
+  let down = false, lastY = null, lastT = 0, usedPointer = false;
+  function toLocal(e) {
+    const r = svg.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width * L.W, y: (e.clientY - r.top) / r.height * L.H };
+  }
+  function crossing(y0, y1, speed) {
+    const lo = Math.min(y0, y1), hi = Math.max(y0, y1);
+    const hits = [];
+    strings.forEach((st, s) => { if (st.y > lo && st.y <= hi) hits.push(s); });
+    if (y1 < y0) hits.reverse();
+    const vel = Math.max(0.35, Math.min(1, speed));
+    hits.forEach((s, k) => setTimeout(() => pluck(s, vel), k * 8));
+    if (hits.length) hideHint();
+  }
+  svg.addEventListener('pointerdown', e => {
+    initAudio(); down = true; usedPointer = true;
+    svg.setPointerCapture?.(e.pointerId);
+    const p = toLocal(e); lastY = p.y; lastT = performance.now();
+    // tocar directamente encima de una cuerda la pulsa
+    strings.forEach((st, s) => { if (Math.abs(st.y - p.y) < L.gap * 0.28) { pluck(s, 0.8); hideHint(); } });
+  });
+  svg.addEventListener('pointermove', e => {
+    const p = toLocal(e), now = performance.now();
+    // con el mouse, pasar por encima también toca (una vez que el audio está activo)
+    const active = down || (e.pointerType === 'mouse' && ctx);
+    if (active && lastY !== null) crossing(lastY, p.y, Math.abs(p.y - lastY) / Math.max(1, now - lastT) * 0.6);
+    lastY = p.y; lastT = now;
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => svg.addEventListener(ev, () => { down = false; }));
+  svg.addEventListener('pointerleave', () => { lastY = null; down = false; });
+
+  const hint = document.getElementById('neckHint');
+  function hideHint() { hint && hint.classList.add('gone'); }
+
+  // ---------- Botones de acordes ----------
+  const chordBox = document.querySelector('.chords');
+  CHORDS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chord-btn'; b.dataset.id = c.id;
+    b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', i === 0 ? 'true' : 'false');
+    b.innerHTML = `<span class="cb-name">${c.label}</span><span class="cb-key" aria-hidden="true">${i + 1}</span>`;
+    b.addEventListener('click', () => { setChord(c.id); if (!golpe.on) strum('down', 0.85); });
+    chordBox.appendChild(b);
+  });
+  function setChord(id) {
+    const c = CHORDS.find(x => x.id === id); if (!c) return;
+    current = c;
+    chordBox.querySelectorAll('.chord-btn').forEach(b => b.setAttribute('aria-checked', b.dataset.id === id ? 'true' : 'false'));
+    placeDots(false);
+  }
+
+  document.getElementById('strumBtn').addEventListener('click', () => strum('down', 0.9));
+
+  // ---------- Golpe de joropo automático (3/4, corcheas: ↓ · ↓ ↑ ✕ ↑) ----------
+  const PATTERN = [{ d: 'down', v: 1 }, null, { d: 'down', v: 0.8 }, { d: 'up', v: 0.7 }, { d: 'down', v: 0.9, m: true }, { d: 'up', v: 0.7 }];
+  const golpe = { on: false, bpm: 150, step: 0, next: 0, timer: 0 };
+  const golpeBtn = document.getElementById('golpeBtn');
+  const tempo = document.getElementById('tempo'), tempoOut = document.getElementById('tempoOut');
+  tempo.addEventListener('input', () => { golpe.bpm = +tempo.value; tempoOut.textContent = tempo.value; });
+
+  function scheduler() {
+    const eighth = 60 / golpe.bpm / 2;
+    while (golpe.next < ctx.currentTime + 0.12) {
+      const st = PATTERN[golpe.step % 6];
+      if (st) strum(st.d, st.v, golpe.next, !!st.m);
+      maraca(golpe.next, golpe.step % 6 === 0 || golpe.step % 6 === 3 ? 1 : 0.55);
+      if (golpe.step % 6 === 0) bassNote(current.bass, golpe.next, eighth * 3);
+      if (golpe.step % 6 === 4) bassNote(current.bass, golpe.next, eighth * 2);
+      const stepIdx = golpe.step % 6, at = golpe.next;
+      setTimeout(() => window.dispatchEvent(new CustomEvent('cuatro:beat', { detail: stepIdx })), Math.max(0, (at - ctx.currentTime) * 1000));
+      golpe.next += eighth; golpe.step++;
+    }
+  }
+  function toggleGolpe(force) {
+    initAudio(); if (!ctx) return;
+    golpe.on = force ?? !golpe.on;
+    golpeBtn.setAttribute('aria-pressed', String(golpe.on));
+    golpeBtn.textContent = golpe.on ? 'Parar golpe' : 'Tocar golpe de joropo';
+    document.getElementById('instrument').classList.toggle('playing', golpe.on);
+    if (golpe.on) { golpe.step = 0; golpe.next = ctx.currentTime + 0.08; golpe.timer = setInterval(scheduler, 25); hideHint(); }
+    else clearInterval(golpe.timer);
+  }
+  golpeBtn.addEventListener('click', () => toggleGolpe());
+  document.addEventListener('visibilitychange', () => { if (document.hidden && golpe.on) toggleGolpe(false); });
+
+  // ---------- Teclado ----------
+  window.addEventListener('keydown', e => {
+    if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+    const r = svg.getBoundingClientRect();
+    const visible = r.bottom > 0 && r.top < window.innerHeight;
+    if (!visible) return;
+    if (/^[1-6]$/.test(e.key)) { setChord(CHORDS[+e.key - 1].id); if (!golpe.on) strum('down', 0.85); }
+    else if (e.code === 'Space' && !e.target.closest('button, a, summary')) { e.preventDefault(); strum(e.shiftKey ? 'up' : 'down', 0.9); }
+  });
+
+  // ---------- Reto ----------
+  const retoBtn = document.getElementById('retoBtn'), retoSteps = document.getElementById('retoSteps'), retoMsg = document.getElementById('retoMsg');
+  const reto = { on: false, i: 0, start: 0 };
+  function renderReto() {
+    retoSteps.innerHTML = RETO.map((id, i) => {
+      const c = CHORDS.find(x => x.id === id);
+      const cls = !reto.on ? '' : i < reto.i ? 'done' : i === reto.i ? 'now' : '';
+      return `<li class="${cls}"><span>${c.label}</span></li>`;
+    }).join('');
+  }
+  renderReto();
+  retoBtn.addEventListener('click', () => {
+    if (golpe.on) toggleGolpe(false);
+    reto.on = true; reto.i = 0; reto.start = performance.now();
+    retoBtn.textContent = 'Reiniciar';
+    retoMsg.textContent = `Primero: ${CHORDS.find(c => c.id === RETO[0]).label}. Elige el acorde y rasguea.`;
+    document.getElementById('reto').classList.add('active');
+    renderReto();
+  });
+  window.addEventListener('cuatro:strum', e => {
+    if (!reto.on || golpe.on || e.detail.mute) return;
+    const want = RETO[reto.i];
+    if (e.detail.chord === want) {
+      reto.i++;
+      if (reto.i >= RETO.length) {
+        const secs = ((performance.now() - reto.start) / 1000).toFixed(1);
+        reto.on = false; renderReto();
+        retoSteps.querySelectorAll('li').forEach(li => li.classList.add('done'));
+        retoMsg.textContent = `Lo lograste en ${secs} segundos. Ese es el ejercicio del día 1 de la app.`;
+        retoBtn.textContent = 'Jugar otra vez';
+        document.getElementById('reto').classList.add('won');
+        setTimeout(() => document.getElementById('reto').classList.remove('won'), 1600);
+        // remate: un golpe corto para celebrar
+        if (ctx) { const t = ctx.currentTime + 0.25; [0, 0.18, 0.36].forEach((d, k) => strum(k === 1 ? 'up' : 'down', 1, t + d)); }
+        return;
+      }
+      retoMsg.textContent = `Bien. Ahora: ${CHORDS.find(c => c.id === RETO[reto.i]).label}.`;
+    } else {
+      retoMsg.textContent = `Ese fue ${CHORDS.find(c => c.id === e.detail.chord).label}. Busca ${CHORDS.find(c => c.id === want).label} y vuelve a rasguear.`;
+    }
+    renderReto();
+  });
+
+  // ---------- Arranque: una sola secuencia de entrada (las cuerdas "se afinan" en silencio) ----------
+  layout();
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const c = L.compact; layoutIfChanged(c); }, 120); });
+  function layoutIfChanged(wasCompact) { const w = svg.parentElement.clientWidth; if ((w < 640) !== wasCompact) layout(); }
+  if (!reduceMotion) [0, 1, 2, 3].forEach(s => setTimeout(() => excite(s, 0.7), 900 + s * 140));
+
+  window.Cuatro = { strum, setChord, initAudio, get ctx() { return ctx; }, get master() { return master; } };
+})();
