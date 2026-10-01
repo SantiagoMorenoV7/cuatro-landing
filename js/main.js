@@ -10,6 +10,19 @@
   if (video) {
     const frame = video.closest('.video-frame'), fill = $('#videoFill'), track = $('#videoTrack'), time = $('#videoTime');
     const chapters = $$('.chapters button');
+    // en celular se usa una versión cuadrada del video, con letra más grande
+    const mqSquare = matchMedia('(max-width: 600px)');
+    const pickVersion = () => {
+      const sq = mqSquare.matches, base = sq ? 'assets/video/leccion-1-cuadrado' : 'assets/video/leccion-1';
+      if (video.dataset.version === base) return;
+      const t = video.currentTime, wasPlaying = !video.paused;
+      video.dataset.version = base;
+      video.poster = `${base}-poster.jpg`;
+      const srcs = $$('source', video); srcs[0].src = `${base}.mp4`; srcs[1].src = `${base}.webm`;
+      frame.classList.toggle('is-square', sq);
+      video.load(); if (t) { video.addEventListener('loadedmetadata', () => { video.currentTime = t; if (wasPlaying) video.play().catch(() => {}); }, { once: true }); }
+    };
+    pickVersion(); mqSquare.addEventListener('change', pickVersion);
     const play = () => { pauseAllAudio(); video.play().catch(() => {}); };
     const toggle = () => (video.paused ? play() : video.pause());
     $('#videoPlay').addEventListener('click', play);
@@ -138,48 +151,60 @@
   if (chart) {
     const NS = 'http://www.w3.org/2000/svg';
     const mk = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p && p.appendChild(e); return e; };
-    const X0 = 60, X1 = 900, Y0 = 340, Y1 = 30, bw = (X1 - X0) / 8;
-    const yA = a => Y0 - (a / 12) * (Y0 - Y1), yB = b => Y0 - (b / 200) * (Y0 - Y1);
-    // guías
-    [0, 3, 6, 9, 12].forEach(v => { mk('line', { x1: X0, x2: X1, y1: yA(v), y2: yA(v), class: 'grid' }, chart); const t = mk('text', { x: X0 - 14, y: yA(v) + 5, 'text-anchor': 'end', class: 'axis' }, chart); t.textContent = v; });
-    [60, 120, 180].forEach(v => { const t = mk('text', { x: X1 + 14, y: yB(v) + 5, class: 'axis axis-r' }, chart); t.textContent = v; });
-    const bars = [];
-    WEEKS.forEach((w, i) => {
-      const g = mk('g', { class: 'wk', tabindex: 0, role: 'button', 'aria-label': `Semana ${i + 1}: ${w.acordes} acordes, ${w.bpm} pulsos por minuto` }, chart);
-      mk('rect', { x: X0 + i * bw, y: Y1 - 10, width: bw, height: Y0 - Y1 + 50, class: 'wk-hit' }, g);
-      const r = mk('rect', { x: X0 + i * bw + bw * 0.2, width: bw * 0.6, y: Y0, height: 0, rx: 8, class: 'bar' }, g);
-      r.dataset.y = yA(w.acordes); r.dataset.h = Y0 - yA(w.acordes);
-      const v = mk('text', { x: X0 + i * bw + bw / 2, y: Y0 - 14, 'text-anchor': 'middle', class: 'bar-val' }, g); v.textContent = w.acordes;
-      const t = mk('text', { x: X0 + i * bw + bw / 2, y: Y0 + 30, 'text-anchor': 'middle', class: 'axis wk-lab' }, g); t.textContent = `Sem ${i + 1}`;
-      bars.push({ g, r });
-      const pick = () => selectWeek(i);
-      g.addEventListener('click', pick);
-      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } if (e.key === 'ArrowRight') bars[Math.min(7, i + 1)].g.focus(); if (e.key === 'ArrowLeft') bars[Math.max(0, i - 1)].g.focus(); });
-      g.addEventListener('focus', pick);
-    });
-    mk('line', { x1: X0, x2: X1, y1: Y0, y2: Y0, class: 'base' }, chart);
-    const pts = WEEKS.map((w, i) => `${X0 + i * bw + bw / 2},${yB(w.bpm)}`).join(' ');
-    const line = mk('polyline', { points: pts, class: 'bpm-line' }, chart);
-    const dots = WEEKS.map((w, i) => mk('circle', { cx: X0 + i * bw + bw / 2, cy: yB(w.bpm), r: 6, class: 'bpm-dot' }, chart));
-    const len = line.getTotalLength ? line.getTotalLength() : 1200;
-    line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
-
+    const mqNarrow = matchMedia('(max-width: 600px)');
     const detail = $('#weekDetail');
-    function selectWeek(i) {
+    let bars = [], dots = [], line = null, sel = 0, shown = false;
+
+    function draw() {
+      const narrow = mqNarrow.matches;
+      chart.innerHTML = '';
+      const VW = narrow ? 400 : 960, VH = narrow ? 390 : 400;
+      chart.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+      const X0 = narrow ? 30 : 60, X1 = narrow ? 366 : 900, Y0 = narrow ? 330 : 340, Y1 = 30, bw = (X1 - X0) / 8;
+      const yA = a => Y0 - (a / 12) * (Y0 - Y1), yB = b => Y0 - (b / 200) * (Y0 - Y1);
+      [0, 3, 6, 9, 12].forEach(v => { mk('line', { x1: X0, x2: X1, y1: yA(v), y2: yA(v), class: 'grid' }, chart); const t = mk('text', { x: X0 - 10, y: yA(v) + 5, 'text-anchor': 'end', class: 'axis' }, chart); t.textContent = v; });
+      [60, 120, 180].forEach(v => { const t = mk('text', { x: X1 + (narrow ? 6 : 14), y: yB(v) + 5, class: 'axis axis-r' }, chart); t.textContent = v; });
+      bars = [];
+      WEEKS.forEach((w, i) => {
+        const g = mk('g', { class: 'wk', tabindex: 0, role: 'button', 'aria-label': `Semana ${i + 1}: ${w.acordes} acordes, ${w.bpm} pulsos por minuto` }, chart);
+        mk('rect', { x: X0 + i * bw, y: Y1 - 10, width: bw, height: Y0 - Y1 + 50, class: 'wk-hit' }, g);
+        const r = mk('rect', { x: X0 + i * bw + bw * (narrow ? 0.14 : 0.2), width: bw * (narrow ? 0.72 : 0.6), y: Y0, height: 0, rx: narrow ? 6 : 8, class: 'bar' }, g);
+        r.dataset.y = yA(w.acordes); r.dataset.h = Y0 - yA(w.acordes);
+        if (shown) { r.setAttribute('y', r.dataset.y); r.setAttribute('height', r.dataset.h); }
+        const v = mk('text', { x: X0 + i * bw + bw / 2, y: Y0 - 14, 'text-anchor': 'middle', class: 'bar-val' }, g); v.textContent = w.acordes;
+        const t = mk('text', { x: X0 + i * bw + bw / 2, y: Y0 + 30, 'text-anchor': 'middle', class: 'axis wk-lab' }, g); t.textContent = narrow ? `S${i + 1}` : `Sem ${i + 1}`;
+        bars.push({ g, r });
+        const pick = () => selectWeek(i);
+        g.addEventListener('click', pick);
+        g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } if (e.key === 'ArrowRight') bars[Math.min(7, i + 1)].g.focus(); if (e.key === 'ArrowLeft') bars[Math.max(0, i - 1)].g.focus(); });
+        g.addEventListener('focus', pick);
+      });
+      mk('line', { x1: X0, x2: X1, y1: Y0, y2: Y0, class: 'base' }, chart);
+      line = mk('polyline', { points: WEEKS.map((w, i) => `${X0 + i * bw + bw / 2},${yB(w.bpm)}`).join(' '), class: 'bpm-line' }, chart);
+      dots = WEEKS.map((w, i) => mk('circle', { cx: X0 + i * bw + bw / 2, cy: yB(w.bpm), r: narrow ? 5 : 6, class: 'bpm-dot' }, chart));
+      const len = line.getTotalLength ? line.getTotalLength() : 1200;
+      line.style.strokeDasharray = len; line.style.strokeDashoffset = shown ? 0 : len;
+      selectWeek(sel, true);
+    }
+
+    function selectWeek(i, quiet) {
+      sel = i;
       bars.forEach((b, k) => b.g.classList.toggle('sel', k === i));
       dots.forEach((d, k) => d.classList.toggle('sel', k === i));
+      if (quiet && detail.innerHTML) return;
       const w = WEEKS[i];
       detail.innerHTML = `<p class="wd-week">Semana ${i + 1}</p><p class="wd-txt">${w.txt}</p><p class="wd-nums"><span><strong>${w.acordes}</strong> acordes</span><span><strong>${w.bpm}</strong> pulsos por minuto</span></p>`;
     }
-    selectWeek(0);
+    draw();
+    mqNarrow.addEventListener('change', draw);
 
     const reveal = () => {
-      chart.classList.add('shown');
+      shown = true; chart.classList.add('shown');
       bars.forEach((b, i) => { b.r.style.transitionDelay = reduceMotion ? '0s' : `${i * 70}ms`; b.r.setAttribute('y', b.r.dataset.y); b.r.setAttribute('height', b.r.dataset.h); });
       line.style.strokeDashoffset = 0;
     };
     if ('IntersectionObserver' in window && !reduceMotion) {
-      const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { reveal(); io.disconnect(); } }, { threshold: 0.35 });
+      const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { reveal(); io.disconnect(); } }, { threshold: 0.3 });
       io.observe(chart);
     } else reveal();
   }
@@ -198,6 +223,36 @@
     mmBtn.setAttribute('aria-pressed', String(on));
     mmBtn.lastChild.textContent = on ? ' Ocultar componentes' : ' Ver componentes multimedia';
   });
+
+  // ---------- Menú móvil ----------
+  const menuBtn = $('#menuBtn'), sheet = $('#menuSheet');
+  if (menuBtn && sheet) {
+    const setMenu = open => {
+      menuBtn.setAttribute('aria-expanded', String(open)); menuBtn.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+      document.body.classList.toggle('menu-open', open);
+      if (open) { sheet.hidden = false; requestAnimationFrame(() => sheet.classList.add('open')); $('a', sheet).focus(); }
+      else { sheet.classList.remove('open'); setTimeout(() => { if (!sheet.classList.contains('open')) sheet.hidden = true; }, 250); }
+    };
+    menuBtn.addEventListener('click', () => setMenu(menuBtn.getAttribute('aria-expanded') !== 'true'));
+    $$('a', sheet).forEach(a => a.addEventListener('click', () => setMenu(false)));
+    addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('menu-open')) { setMenu(false); menuBtn.focus(); } });
+  }
+
+  // ---------- Galería: indicador al deslizar ----------
+  const phones = $('.phones'), galDots = $$('.gal-dots i');
+  if (phones && galDots.length) {
+    phones.addEventListener('scroll', () => {
+      const figs = $$('figure', phones), mid = phones.scrollLeft + phones.clientWidth / 2;
+      let best = 0; figs.forEach((f, i) => { if (Math.abs(f.offsetLeft + f.clientWidth / 2 - mid) < Math.abs(figs[best].offsetLeft + figs[best].clientWidth / 2 - mid)) best = i; });
+      galDots.forEach((d, i) => d.classList.toggle('on', i === best));
+    }, { passive: true });
+  }
+
+  // ---------- Botón de componentes: aparece al pasar el inicio ----------
+  if (mmBtn && 'IntersectionObserver' in window) {
+    const heroEl = $('.hero-copy');
+    new IntersectionObserver(es => mmBtn.classList.toggle('peek', !es[0].isIntersecting)).observe(heroEl);
+  }
 
   // pausa el video y los audios si el golpe del hero empieza a sonar
   $('#golpeBtn')?.addEventListener('click', () => { pauseAllAudio(); video && video.pause(); });

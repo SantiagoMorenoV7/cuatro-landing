@@ -109,71 +109,85 @@
   const strings = [];      // {path, y, amp, phase}
   const dots = [];         // círculos de los dedos
 
+  // En celular el diapasón va vertical (cejuela arriba) y los acordes quedan al lado, como en una app de instrumento.
+  const mqVertical = window.matchMedia('(max-width: 719px)');
+  let frame = null, overlay = null;
+
   function layout() {
-    const w = svg.parentElement.clientWidth;
-    const compact = w < 640;
-    const W = compact ? 640 : 1200, H = compact ? 380 : 330;
-    const nFrets = compact ? 4 : 7;
-    const nutX = compact ? 104 : 90;
-    const endX = compact ? W - 8 : W - 190;           // en escritorio queda espacio para la boca del cuatro
-    const top = compact ? 70 : 72, gap = compact ? 78 : 62;
+    const vertical = mqVertical.matches;
+    // Coordenadas del "marco": x a lo largo del mástil, y a través de las cuerdas.
+    const nFrets = vertical ? 5 : 7;
+    const nutX = vertical ? 64 : 90;
+    const endX = vertical ? 545 : 1010;
+    const top = vertical ? 58 : 72, gap = vertical ? 62 : 62;
+    const W = vertical ? 640 : 1200;                       // largo total del marco (incluye la tapa)
+    const H = vertical ? 300 : 330;                        // ancho total del marco
     const frets = [];
-    // espaciado de trastes decreciente (regla del 17,817)
-    let x = nutX, scale = (endX - nutX) / (1 - Math.pow(1 - 1 / 17.817, nFrets));
+    let x = nutX; const scale = (endX - nutX) / (1 - Math.pow(1 - 1 / 17.817, nFrets));
     frets.push(x);
     for (let i = 1; i <= nFrets; i++) { x = nutX + scale * (1 - Math.pow(1 - 1 / 17.817, i)); frets.push(x); }
-    L = { W, H, compact, nFrets, nutX, endX, top, gap, frets };
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    L = { W, H, vertical, compact: vertical, nFrets, nutX, endX, top, gap, frets };
+    svg.setAttribute('viewBox', vertical ? `0 0 ${H} ${W}` : `0 0 ${W} ${H}`);
+    svg.classList.toggle('is-vertical', vertical);
     build();
+  }
+
+  // pasa un punto del marco a la pantalla del SVG (en vertical se intercambian los ejes)
+  const P = (x, y) => (L.vertical ? { x: y, y: x } : { x, y });
+
+  function label(x, y, text, cls, anchorH, anchorV) {
+    const p = P(x, y);
+    const t = mk('text', { x: p.x, y: p.y, class: cls, 'text-anchor': L.vertical ? anchorV : anchorH, 'dominant-baseline': 'central' }, overlay);
+    t.textContent = text; return t;
   }
 
   function build() {
     svg.innerHTML = '';
     strings.length = 0; dots.length = 0;
-    const { W, H, compact, nutX, endX, top, gap, frets } = L;
-    const boardTop = top - 40, boardH = gap * 3 + 80;
+    const { W, H, vertical, nutX, endX, top, gap, frets } = L;
+    const boardTop = top - 40, boardH = gap * 3 + 80, midY = top + gap * 1.5;
 
     const defs = mk('defs', {}, svg);
     defs.innerHTML = `
-      <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <linearGradient id="wood" ${vertical ? 'x1="0" y1="0" x2="1" y2="0"' : 'x1="0" y1="0" x2="0" y2="1"'}>
         <stop offset="0" stop-color="#9A5329"/><stop offset=".5" stop-color="#7A3E1D"/><stop offset="1" stop-color="#9A5329"/>
       </linearGradient>
       <radialGradient id="hole" cx=".5" cy=".5" r=".5"><stop offset=".55" stop-color="#0b0d1f"/><stop offset="1" stop-color="#1d2148"/></radialGradient>`;
 
-    // tapa del cuatro (solo escritorio)
-    if (!compact) {
-      mk('path', { d: `M${endX - 10} ${boardTop - 18} C ${endX + 120} ${boardTop - 70}, ${W + 80} ${boardTop - 20}, ${W + 80} ${H / 2} C ${W + 80} ${H - boardTop + 20}, ${endX + 120} ${H - boardTop + 70}, ${endX - 10} ${H - boardTop + 18}Z`, fill: '#D9A15A' }, svg);
-      mk('circle', { cx: endX + 120, cy: top + gap * 1.5, r: 72, fill: '#5B3415' }, svg);
-      mk('circle', { cx: endX + 120, cy: top + gap * 1.5, r: 62, fill: 'url(#hole)' }, svg);
-    }
+    // el marco se dibuja en horizontal; en vertical se refleja sobre la diagonal
+    frame = mk('g', vertical ? { transform: 'matrix(0 1 1 0 0 0)' } : {}, svg);
+    overlay = mk('g', { class: 'overlay' }, svg);
+
+    // tapa y boca del cuatro
+    const bodyX = endX + 120;
+    mk('path', { d: `M${endX - 10} ${boardTop - 18} C ${endX + 120} ${boardTop - 70}, ${W + 80} ${boardTop - 20}, ${W + 80} ${H / 2} C ${W + 80} ${H - boardTop + 20}, ${endX + 120} ${H - boardTop + 70}, ${endX - 10} ${H - boardTop + 18}Z`, fill: '#D9A15A' }, frame);
+    mk('circle', { cx: bodyX, cy: midY, r: 72, fill: '#5B3415' }, frame);
+    mk('circle', { cx: bodyX, cy: midY, r: 62, fill: 'url(#hole)' }, frame);
     // diapasón
-    mk('rect', { x: nutX - 26, y: boardTop, width: endX - nutX + 26, height: boardH, rx: 14, fill: 'url(#wood)' }, svg);
-    // marcadores (trastes 3, 5, 7)
-    [3, 5, 7].forEach(f => { if (f <= L.nFrets) mk('circle', { cx: (frets[f - 1] + frets[f]) / 2, cy: top + gap * 1.5, r: 8, fill: '#F1D9B0', opacity: .45 }, svg); });
-    // cejuela y trastes
-    mk('rect', { x: nutX - 8, y: boardTop, width: 10, height: boardH, fill: '#FBFBF7' }, svg);
+    mk('rect', { x: nutX - 26, y: boardTop, width: endX - nutX + 26, height: boardH, rx: 14, fill: 'url(#wood)' }, frame);
+    [3, 5, 7].forEach(f => { if (f <= L.nFrets) mk('circle', { cx: (frets[f - 1] + frets[f]) / 2, cy: midY, r: 8, fill: '#F1D9B0', opacity: .45 }, frame); });
+    mk('rect', { x: nutX - 8, y: boardTop, width: 10, height: boardH, fill: '#FBFBF7' }, frame);
     for (let i = 1; i < frets.length; i++) {
-      mk('rect', { x: frets[i] - 2, y: boardTop, width: 4, height: boardH, fill: '#C9CCD6' }, svg);
-      const n = mk('text', { x: (frets[i - 1] + frets[i]) / 2, y: boardTop + boardH + 26, 'text-anchor': 'middle', class: 'fret-num' }, svg);
-      n.textContent = i;
+      mk('rect', { x: frets[i] - 2, y: boardTop, width: 4, height: boardH, fill: '#C9CCD6' }, frame);
     }
     // cuerdas
     for (let s = 0; s < 4; s++) {
       const y = top + s * gap;
-      const lab = mk('text', { x: nutX - 40, y: y + 7, 'text-anchor': 'end', class: 'str-name' }, svg);
-      lab.textContent = STRING_NAMES[s];
-      const path = mk('path', { d: `M${nutX} ${y} L${compact ? W : endX + 120} ${y}`, class: 'string', 'stroke-width': s === 1 || s === 3 ? 3.4 : 2.4 }, svg);
-      strings.push({ path, y, amp: 0, t0: 0, x2: compact ? W : endX + 120 });
+      const path = mk('path', { d: `M${nutX} ${y} L${bodyX} ${y}`, class: 'string', 'stroke-width': s === 1 || s === 3 ? 3.4 : 2.4 }, frame);
+      strings.push({ path, y, amp: 0, t0: 0, x2: bodyX });
     }
+    // textos (siempre derechos, por eso van fuera del marco reflejado)
+    for (let i = 1; i < frets.length; i++) label((frets[i - 1] + frets[i]) / 2, vertical ? H - 14 : boardTop + boardH + 26, String(i), 'fret-num', 'middle', 'middle');
+    for (let s = 0; s < 4; s++) label(vertical ? nutX - 42 : nutX - 40, top + s * gap, STRING_NAMES[s], 'str-name', 'end', 'middle');
     // dedos
     for (let s = 0; s < 4; s++) {
-      const g = mk('g', { class: 'dot' }, svg);
-      mk('circle', { r: compact ? 25 : 21 }, g);
-      const t = mk('text', { 'text-anchor': 'middle', y: 7 }, g);
+      const g = mk('g', { class: 'dot' }, overlay);
+      mk('circle', { r: vertical ? 22 : 21 }, g);
+      const t = mk('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g);
       dots.push({ g, t });
     }
-    // zona de toque transparente (encima de todo)
-    mk('rect', { x: 0, y: 0, width: W, height: H, fill: 'transparent', class: 'hit' }, svg);
+    const vb = svg.viewBox.baseVal;
+    mk('rect', { x: 0, y: 0, width: vb.width, height: vb.height, fill: 'transparent', class: 'hit' }, svg);
     placeDots(true);
   }
 
@@ -181,9 +195,9 @@
     for (let s = 0; s < 4; s++) {
       const f = current.frets[s], d = dots[s];
       if (!f || f > L.nFrets) { d.g.classList.remove('on'); continue; }
-      const x = (L.frets[f - 1] + L.frets[f]) / 2, y = L.top + s * L.gap;
+      const p = P((L.frets[f - 1] + L.frets[f]) / 2, L.top + s * L.gap);
       d.g.style.transition = instant ? 'none' : '';
-      d.g.setAttribute('transform', `translate(${x} ${y})`);
+      d.g.setAttribute('transform', `translate(${p.x} ${p.y})`);
       d.t.textContent = f;
       d.g.classList.add('on');
     }
@@ -204,7 +218,7 @@
       const dt = (now - st.t0) / 1000;
       const a = st.amp * Math.exp(-dt * 3.4);
       if (a < 0.01) { st.amp = 0; continue; }
-      const off = reduceMotion ? 0 : a * (L.compact ? 16 : 13) * Math.sin(now / 1000 * 2 * Math.PI * 13);
+      const off = reduceMotion ? 0 : a * (L.vertical ? 11 : 13) * Math.sin(now / 1000 * 2 * Math.PI * 13);
       const mid = (L.nutX + st.x2) / 2;
       st.path.setAttribute('d', `M${L.nutX} ${st.y} Q${mid} ${st.y + off * 2} ${st.x2} ${st.y}`);
       st.path.classList.add('ringing');
@@ -213,8 +227,10 @@
   }
 
   // ---------- Tocar ----------
+  let lastPointerType = 'mouse';
+  const buzz = ms => { if (lastPointerType === 'touch' && navigator.vibrate) try { navigator.vibrate(ms); } catch (_) {} };
   function pluck(s, vel = 0.8, when) {
-    initAudio();
+    initAudio(); if (when === undefined) buzz(7);
     const t = when ?? (ctx ? ctx.currentTime : 0);
     if (ctx) playNote(freqOf(s), t, 0.55 * vel, { bright: 0.45 + vel * 0.35 });
     const delay = ctx && when ? Math.max(0, (when - ctx.currentTime) * 1000) : 0;
@@ -238,8 +254,9 @@
   // ---------- Entrada del puntero: cruzar cuerdas las toca ----------
   let down = false, lastY = null, lastT = 0, usedPointer = false;
   function toLocal(e) {
-    const r = svg.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width * L.W, y: (e.clientY - r.top) / r.height * L.H };
+    const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+    const sx = (e.clientX - r.left) / r.width * vb.width, sy = (e.clientY - r.top) / r.height * vb.height;
+    return L.vertical ? { x: sy, y: sx } : { x: sx, y: sy };
   }
   function crossing(y0, y1, speed) {
     const lo = Math.min(y0, y1), hi = Math.max(y0, y1);
@@ -251,7 +268,7 @@
     if (hits.length) hideHint();
   }
   svg.addEventListener('pointerdown', e => {
-    initAudio(); down = true; usedPointer = true;
+    initAudio(); down = true; usedPointer = true; lastPointerType = e.pointerType;
     svg.setPointerCapture?.(e.pointerId);
     const p = toLocal(e); lastY = p.y; lastT = performance.now();
     // tocar directamente encima de una cuerda la pulsa
@@ -313,12 +330,14 @@
     initAudio(); if (!ctx) return;
     golpe.on = force ?? !golpe.on;
     golpeBtn.setAttribute('aria-pressed', String(golpe.on));
-    golpeBtn.textContent = golpe.on ? 'Parar golpe' : 'Tocar golpe de joropo';
+    golpeBtn.textContent = golpe.on ? 'Parar golpe' : 'Golpe de joropo';
     document.getElementById('instrument').classList.toggle('playing', golpe.on);
     if (golpe.on) { golpe.step = 0; golpe.next = ctx.currentTime + 0.08; golpe.timer = setInterval(scheduler, 25); hideHint(); }
-    else clearInterval(golpe.timer);
+    else { clearInterval(golpe.timer); beatCells.forEach(c => c.classList.remove('on')); }
   }
   golpeBtn.addEventListener('click', () => toggleGolpe());
+  const beatCells = [...document.querySelectorAll('#beat span')];
+  window.addEventListener('cuatro:beat', e => { if (!golpe.on) return; beatCells.forEach((c, i) => c.classList.toggle('on', i === e.detail)); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && golpe.on) toggleGolpe(false); });
 
   // ---------- Teclado ----------
@@ -376,8 +395,7 @@
 
   // ---------- Arranque: una sola secuencia de entrada (las cuerdas "se afinan" en silencio) ----------
   layout();
-  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const c = L.compact; layoutIfChanged(c); }, 120); });
-  function layoutIfChanged(wasCompact) { const w = svg.parentElement.clientWidth; if ((w < 640) !== wasCompact) layout(); }
+  mqVertical.addEventListener('change', layout);
   if (!reduceMotion) [0, 1, 2, 3].forEach(s => setTimeout(() => excite(s, 0.7), 900 + s * 140));
 
   window.Cuatro = { strum, setChord, initAudio, get ctx() { return ctx; }, get master() { return master; } };

@@ -43,6 +43,14 @@ En la página hay un botón flotante **"Ver componentes multimedia"** que marca 
 - **¿Cuál impacta más la experiencia?** La interactividad del cuatro: el visitante toca el instrumento en los primeros segundos, antes de leer nada.
 - **¿Qué pasa si eliminamos uno?** Sin audio la página pierde su sentido: el cuatro queda mudo y la comparación semana 1 vs semana 8 desaparece. Sin interactividad, la página solo describe el producto en vez de dejar probarlo. Sin video, no se ve cómo es una lección real.
 
+## Pensada para celular
+
+- En pantallas pequeñas el cuatro se pone **vertical**, con la cejuela arriba y los acordes en una columna al lado, como en una app de instrumento. Se rasguea deslizando el dedo de lado a lado; deslizar hacia arriba o abajo sigue haciendo scroll.
+- En Android el teléfono **vibra suave** con cada cuerda.
+- El video cambia a una **versión cuadrada** con letra más grande.
+- El gráfico se redibuja para pantalla angosta, la galería tiene indicador de página, el menú se abre en pantalla completa y el plan principal sale primero.
+- El botón "Ver componentes" aparece al bajar, para no tapar el instrumento.
+
 ## Cómo está hecho
 
 - `js/cuatro.js`: síntesis de cuerdas con el algoritmo **Karplus-Strong** en Web Audio API, afinación real del cuatro (La3, Re4, Fa#4, Si3), golpe de joropo en 3/4 con maracas y bajo, y el reto.

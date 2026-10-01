@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Cuatro: aprende cuatro llanero en 8 semanas</title>
   <meta name="description" content="La app que te enseña a tocar cuatro llanero desde cero: lecciones en video, afinador, golpe de joropo y retos diarios.">
   <meta property="og:title" content="Cuatro: aprende cuatro llanero en 8 semanas">
@@ -24,8 +24,19 @@
     <a href="#ruta">La ruta</a>
     <a href="#precios">Precios</a>
   </nav>
-  <a class="btn btn-small" href="#precios">Empezar gratis</a>
+  <a class="btn btn-small nav-cta" href="#precios">Empezar gratis</a>
+  <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="menuSheet" aria-label="Abrir menú"><span></span><span></span></button>
 </header>
+<div class="menu-sheet" id="menuSheet" hidden>
+  <nav aria-label="Menú">
+    <a href="#leccion">Lección gratis</a>
+    <a href="#escucha">Escucha</a>
+    <a href="#ruta">La ruta</a>
+    <a href="#app">La app</a>
+    <a href="#precios">Precios</a>
+  </nav>
+  <a class="btn" href="#precios">Empezar gratis</a>
+</div>
 
 <main id="contenido">
 
@@ -39,7 +50,7 @@
   <div class="instrument" id="instrument">
     <div class="neck-wrap" id="neckWrap">
       <svg id="neck" role="img" aria-label="Diapasón del cuatro. Arrastra el puntero o el dedo sobre las cuerdas para tocar."></svg>
-      <p class="neck-hint" id="neckHint"><span class="hint-dot" aria-hidden="true"></span><span class="hint-fine">Haz clic y arrastra sobre las cuerdas</span><span class="hint-touch">Desliza el dedo sobre las cuerdas</span></p>
+      <p class="neck-hint" id="neckHint"><span class="hint-dot" aria-hidden="true"></span><span class="hint-fine">Haz clic y arrastra sobre las cuerdas</span><span class="hint-touch">Desliza el dedo de lado a lado</span></p>
     </div>
 
     <div class="controls">
@@ -48,7 +59,8 @@
       </div>
       <div class="actions">
         <button class="btn btn-ghost" id="strumBtn" type="button" aria-keyshortcuts="Space">Rasguear</button>
-        <button class="btn" id="golpeBtn" type="button" aria-pressed="false">Tocar golpe de joropo</button>
+        <button class="btn" id="golpeBtn" type="button" aria-pressed="false">Golpe de joropo</button>
+        <div class="beat" id="beat" aria-hidden="true"><span>↓</span><span>·</span><span>↓</span><span>↑</span><span>✕</span><span>↑</span></div>
         <label class="tempo">Velocidad <input id="tempo" type="range" min="90" max="190" value="150" aria-label="Velocidad del golpe en pulsos por minuto"><output id="tempoOut">150</output></label>
       </div>
       <p class="keys">Teclado: <kbd>1</kbd>–<kbd>6</kbd> cambia de acorde, <kbd>Espacio</kbd> rasguea.</p>
@@ -159,6 +171,7 @@
     <figure><img src="assets/img/app-2.webp" alt="Pantalla del afinador marcando Fa sostenido casi perfecto" width="585" height="1206" loading="lazy"><figcaption><strong>Afinador.</strong> Escucha cada cuerda y te dice si subir o bajar.</figcaption></figure>
     <figure><img src="assets/img/app-3.webp" alt="Pantalla de progreso con porcentaje por acorde y velocidad del golpe en 142 pulsos" width="585" height="1206" loading="lazy"><figcaption><strong>Progreso.</strong> Qué acordes ya te salen limpios y cuánto ha subido tu golpe.</figcaption></figure>
   </div>
+  <div class="gal-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
 </section>
 
 <!-- ============ PRECIOS ============ -->
