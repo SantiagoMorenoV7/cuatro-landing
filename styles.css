@@ -514,3 +514,31 @@ body.mm-on .hero[data-mm]::before { top: 92px; }
 /* pantallas inclinables */
 .phones img { transition: transform .35s var(--ease); }
 .phones figure:hover img { transition: transform .08s linear; }
+
+/* ================= Marca ================= */
+.brand img { height: 38px; width: auto; display: block; }
+.sec-cream { background: #F4ECDD; color: #1F3B2D; }
+.sec-green { background: #1F3B2D; }
+.brand-sec { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+@media (max-width: 900px) { .brand-sec { grid-template-columns: 1fr; } }
+.brand-copy h2 { margin-bottom: 24px; }
+.brand-copy p { max-width: 30em; color: #3C5446; }
+.brand-meaning { margin: 28px 0 0; display: grid; gap: 14px; }
+.brand-meaning div { display: grid; grid-template-columns: 200px 1fr; gap: 4px 16px; align-items: baseline; }
+.brand-meaning dt { display: flex; align-items: center; gap: 10px; font-weight: 750; }
+.brand-meaning dt i { width: 22px; height: 22px; border-radius: 6px; flex: none; transform: translateY(4px); }
+.brand-meaning dd { margin: 0; color: #3C5446; }
+@media (max-width: 520px) { .brand-meaning div { grid-template-columns: 1fr; } .brand-meaning dd { padding-left: 32px; } }
+.brand-board { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.bt { margin: 0; border-radius: 22px; display: grid; place-items: center; overflow: hidden; }
+.bt img { width: 100%; height: auto; }
+.bt-wide { grid-column: span 6; padding: clamp(24px, 4vw, 44px) clamp(28px, 6vw, 72px); }
+.bt-wide img { max-width: 440px; }
+.bt-cream { background: #FBF7EF; box-shadow: inset 0 0 0 2px #1F3B2D14; }
+.bt-green { background: #1F3B2D; }
+.bt-icon { grid-column: span 2; padding: 0; background: transparent; }
+.bt-icon img { width: 100%; max-width: 160px; filter: drop-shadow(0 12px 18px #1F3B2D30); }
+.bt-mono { grid-column: span 6; padding: 22px 40px; background: #fff; }
+.bt-mono img { max-width: 260px; }
+.final-logo { width: clamp(72px, 9vw, 110px); height: auto; margin-bottom: 26px; }
+.foot-logo { height: 44px; width: auto; margin-bottom: 10px; }

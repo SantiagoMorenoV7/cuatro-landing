@@ -1,0 +1,12 @@
+{
+  "name": "Cuatro: aprende cuatro llanero",
+  "short_name": "Cuatro",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#161A3B",
+  "theme_color": "#161A3B",
+  "icons": [
+    { "src": "/assets/brand/icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/brand/icono-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Cuatro"><title>Cuatro</title><rect width="512" height="512" rx="112" fill="#F4ECDD"/><g transform="translate(96 80) scale(1.45)">
+  <defs>
+    <linearGradient id="kcw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BC6C34"/><stop offset="1" stop-color="#8C4620"/></linearGradient>
+    <clipPath id="kcc"><path clip-rule="evenodd" d="M110 30a100 100 0 1 0 0.01 0Z M124 84a46 46 0 1 1-0.01 0Z"/></clipPath>
+    <clipPath id="kct"><path d="M-20-20H300V75L124 125 96 118Q50 112-20 140Z"/></clipPath>
+    <clipPath id="kcb"><path d="M-20 270H300V185L124 135 104 140Q52 120-20 160Z"/></clipPath>
+  </defs>
+  <g clip-path="url(#kcc)">
+    <rect width="220" height="240" fill="#1F3B2D" clip-path="url(#kct)"/>
+    <rect width="220" height="240" fill="url(#kcw)" clip-path="url(#kcb)"/>
+  </g>
+  <g fill="#EBCB9F" stroke="#A2703C" stroke-width="1.6">
+    <rect x="73" y="2" width="7.5" height="196" rx="3.75"/><rect x="86" y="0" width="7.5" height="198" rx="3.75"/>
+    <rect x="99" y="0" width="7.5" height="198" rx="3.75"/><rect x="112" y="2" width="7.5" height="196" rx="3.75"/>
+    <rect x="70" y="196" width="52" height="7" rx="3.5"/>
+    <circle cx="76.75" cy="208" r="6"/><circle cx="89.75" cy="208" r="6"/><circle cx="102.75" cy="208" r="6"/><circle cx="115.75" cy="208" r="6"/>
+  </g></g>
+</svg>

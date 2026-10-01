@@ -29,7 +29,7 @@ En la página hay un botón flotante **"Ver componentes multimedia"** que marca 
 |---|---|---|
 | **Texto** | Toda la página | Titular, beneficios, precios, preguntas frecuentes |
 | **Gráficos** | Diapasón en SVG, gráfico "La ruta de 8 semanas", formas de onda, íconos | Muestran acordes, progreso y sonido |
-| **Imágenes** | Ilustración del llano y las tres pantallas de la app | Presentan el producto |
+| **Imágenes** | Ilustración del llano, las tres pantallas de la app y el logo con sus variantes | Presentan el producto |
 | **Video** | "La lección 1, completa y gratis" | Tutorial de 21 s con audio sincronizado y capítulos |
 | **Audio** | El cuatro del inicio (síntesis en vivo), "Semana 1 vs Semana 8" y el afinador con micrófono | El cuatro suena de verdad; las grabaciones comparan el antes y el después |
 | **Animación** | Cuerdas que vibran, entrada del titular, gráfico que se dibuja, espectro | Responden a lo que hace el usuario |
@@ -42,6 +42,10 @@ En la página hay un botón flotante **"Ver componentes multimedia"** que marca 
 - **¿Cómo se integran?** El audio y la interactividad están unidos en el cuatro del inicio: al pasar el mouse por las cuerdas, se genera el sonido (audio), las cuerdas vibran (animación) y los dedos se dibujan en el diapasón (gráficos). El video combina gráficos, animación y audio sincronizado. Los reproductores juntan audio con su forma de onda (gráfico).
 - **¿Cuál impacta más la experiencia?** La interactividad del cuatro: el visitante toca el instrumento en los primeros segundos, antes de leer nada.
 - **¿Qué pasa si eliminamos uno?** Sin audio la página pierde su sentido: el cuatro queda mudo y la comparación semana 1 vs semana 8 desaparece. Sin interactividad, la página solo describe el producto en vez de dejar probarlo. Sin video, no se ve cómo es una lección real.
+
+## Marca
+
+El logo está redibujado en vector (`assets/brand/`): la C es la caja del cuatro y las cuatro líneas sus cuerdas. Hay versión clara, oscura y de una tinta, tres íconos de app (crema, verde y madera), favicon, ícono para la pantalla de inicio del celular y la imagen para compartir en redes. Aparece en la navegación, el video, la sección "Una C que es caja y cuerdas", el cierre y el pie.
 
 ## Lo nuevo
 
